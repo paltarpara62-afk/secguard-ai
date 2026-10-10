@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="app">
+        <h1>SecGuard AI Dashboard</h1>
+        <input type="text" id="url-input" placeholder="Enter URL to scan...">
+        <button onclick="runScan()">Scan Now</button>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function runScan() {
+            const url = document.getElementById('url-input').value;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerText = "Scanning...";
+
+            try {
+                // Call the Python tool defined in scanner.py
+                const response = await window.anna.runtime.call("analyze_url", {url});
+                resultsDiv.innerHTML = `
+                    <div class="card ${response.threat_level.toLowerCase()}">
+                        <strong>Threat Level: ${response.threat_level}</strong>
+                        <p>${response.details}</p>
+                    </div>
+                `;
+            } catch (err) {
+                resultsDiv.innerText = "Error: " + err.message;
+            }
+        }
+    </script>
+</body>
+
+</html>
