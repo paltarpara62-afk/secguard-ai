@@ -1,2 +1,0 @@
-[console_scripts]
-tool-dev-secguard-ai = secguard_ai_plugin:main
