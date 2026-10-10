@@ -5,19 +5,46 @@
   <meta charset="UTF-8">
   <title>SecGuard AI Dashboard</title>
   <style>
+    :root {
+      --bg-color: #f4f7f6;
+      --text-color: #333333;
+      --card-bg: #ffffff;
+      --border-color: #ccc;
+      --input-bg: #ffffff;
+      --input-text: #333333;
+    }
+
+    body.dark-mode {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --card-bg: #1e1e1e;
+      --border-color: #444444;
+      --input-bg: #2d2d2d;
+      --input-text: #ffffff;
+    }
+
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
-      background: #f4f7f6;
-      color: #333;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
 
     .card {
-      background: white;
+      background: var(--card-bg);
       padding: 20px;
       margin-bottom: 20px;
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: background 0.3s, border-color 0.3s;
     }
 
     input[type="text"],
@@ -26,7 +53,9 @@
       padding: 10px;
       margin-top: 5px;
       margin-bottom: 10px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-color);
+      background-color: var(--input-bg);
+      color: var(--input-text);
       border-radius: 4px;
       box-sizing: border-box;
     }
@@ -45,7 +74,9 @@
     }
 
     #results,
-    #scanResult {
+    #scanResult,
+    #codeResult,
+    #dataResult {
       margin-top: 15px;
       padding: 10px;
       border-radius: 4px;
@@ -55,7 +86,10 @@
 
 <body>
   <div id="app">
-    <h1>🛡️ SecGuard AI Dashboard</h1>
+    <div class="header-bar">
+      <h1>🛡️ SecGuard AI Dashboard</h1>
+      <button id="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+    </div>
 
     <!-- Feature 1: URL / Threat Scanner -->
     <div class="card">
@@ -74,47 +108,81 @@
       <button onclick="scanPrompt()">Scan Prompt</button>
       <div id="scanResult"></div>
     </div>
+
+    <!-- Feature 3: Code Vulnerability Analyzer -->
+    <div class="card">
+      <h3>🔍 Code Vulnerability Analyzer</h3>
+      <textarea id="codeSnippet" placeholder="Paste your code snippet here (e.g., hardcoded passwords, SQL queries)..."
+        rows="4"></textarea>
+      <button onclick="scanCode()">Analyze Code</button>
+      <div id="codeResult"></div>
+    </div>
+
+    <!-- Feature 4: Real Hacking & Data Protection (Sensitive Data Redactor) -->
+    <div class="card">
+      <h3>🛡️ Real Hacking & Data Protection (PII Redaction)</h3>
+      <textarea id="sensitiveDataInput"
+        placeholder="Enter logs or text containing sensitive info (e.g., API keys, passwords, emails)..."
+        rows="4"></textarea>
+      <button onclick="redactData()">Protect & Mask Data</button>
+      <div id="dataResult"></div>
+    </div>
   </div>
 
   <script>
+    // Theme Toggle Function
+    function toggleTheme() {
+      const body = document.body;
+      const button = document.getElementById('theme-toggle');
+      body.classList.toggle('dark-mode');
+
+      if (body.classList.contains('dark-mode')) {
+        button.textContent = '☀️ Light Mode';
+      } else {
+        button.textContent = '🌙 Dark Mode';
+      }
+    }
+
     // URL Scan Function with Safe Local Fallback
     async function runScan() {
       const url = document.getElementById('url-input').value;
       const resultsDiv = document.getElementById('results');
 
       if (!url.trim()) {
-        resultsDiv.style.background = "#fff";
+        resultsDiv.style.background = "transparent";
         resultsDiv.innerText = "Please enter a URL to scan.";
         return;
       }
 
       resultsDiv.innerText = "Scanning URL...";
-      resultsDiv.style.background = "#fff";
+      resultsDiv.style.background = "transparent";
 
       try {
         if (window.anna && window.anna.runtime) {
           const response = await window.anna.runtime.call("analyze_url", {url});
           resultsDiv.style.background = "#e6ffed";
+          resultsDiv.style.color = "#000";
           resultsDiv.innerHTML = `
-                        <div>
-                            <strong>Threat Level: ${response.threat_level}</strong>
-                            <p>${response.details}</p>
-                        </div>
-                    `;
+            <div>
+                <strong>Threat Level: ${response.threat_level}</strong>
+                <p>${response.details}</p>
+            </div>
+          `;
         } else {
-          // Local simulation fallback for --no-llm mode
           setTimeout(() => {
             resultsDiv.style.background = "#e6ffed";
+            resultsDiv.style.color = "#000";
             resultsDiv.innerHTML = `
-                            <div>
-                                <strong>Threat Level: Low (Local Simulation)</strong>
-                                <p>URL <code>${url}</code> was scanned successfully. No malicious signatures found in local mock mode.</p>
-                            </div>
-                        `;
+                <div>
+                    <strong>Threat Level: Low (Local Simulation)</strong>
+                    <p>URL <code>${url}</code> was scanned successfully. No malicious signatures found in local mock mode.</p>
+                </div>
+            `;
           }, 400);
         }
       } catch (err) {
         resultsDiv.style.background = "#ffe6e6";
+        resultsDiv.style.color = "#000";
         resultsDiv.innerText = "Error: " + err.message;
       }
     }
@@ -125,14 +193,12 @@
       const resultDiv = document.getElementById('scanResult');
 
       if (!prompt.trim()) {
-        resultDiv.style.background = "#fff";
+        resultDiv.style.background = "transparent";
         resultDiv.innerText = "Please enter a prompt to scan.";
         return;
       }
 
-      // Blacklist patterns for prompt injection & jailbreak
       const maliciousKeywords = ['ignore previous instructions', 'system prompt', 'bypass', 'jailbreak', 'reveal secret', 'pretend to be', 'override'];
-
       let isThreat = false;
       let detectedKeyword = '';
 
@@ -154,125 +220,85 @@
         resultDiv.innerHTML = `<strong>✅ Safe Prompt</strong> No malicious patterns detected. Ready to process.`;
       }
     }
+
+    // Code Vulnerability Analyzer Function
+    function scanCode() {
+      const code = document.getElementById('codeSnippet').value;
+      const resultDiv = document.getElementById('codeResult');
+
+      if (!code.trim()) {
+        resultDiv.style.background = "transparent";
+        resultDiv.innerText = "Please paste some code to analyze.";
+        return;
+      }
+
+      const vulnerabilities = [
+        {pattern: /password\s*=\s*['"][^'"]+['"]/i, name: "Hardcoded Password / Secret"},
+        {pattern: /eval\s*\(/i, name: "Unsafe use of eval()"},
+        {pattern: /SELECT\s+\*\s+FROM/i, name: "Potential SQL Injection Pattern"},
+        {pattern: /api_key\s*=\s*['"][^'"]+['"]/i, name: "Hardcoded API Key"},
+        {pattern: /document\.write\s*\(/i, name: "Potential XSS Vulnerability"}
+      ];
+
+      let foundIssues = [];
+      for (let vuln of vulnerabilities) {
+        if (vuln.pattern.test(code)) {
+          foundIssues.push(vuln.name);
+        }
+      }
+
+      if (foundIssues.length > 0) {
+        resultDiv.style.background = '#ffe6e6';
+        resultDiv.style.color = '#cc0000';
+        resultDiv.innerHTML = `<strong>⚠️ Vulnerabilities Detected (${foundIssues.length}):</strong><ul>` +
+          foundIssues.map(issue => `<li>${issue}</li>`).join('') + `</ul>`;
+      } else {
+        resultDiv.style.background = '#e6ffed';
+        resultDiv.style.color = '#006622';
+        resultDiv.innerHTML = `<strong>✅ Secure Code</strong> No common vulnerability signatures found.`;
+      }
+    }
+
+    // Real Hacking & Data Protection (DLP / Redaction) Function
+    function redactData() {
+      let text = document.getElementById('sensitiveDataInput').value;
+      const resultDiv = document.getElementById('dataResult');
+
+      if (!text.trim()) {
+        resultDiv.style.background = "transparent";
+        resultDiv.innerText = "Please enter text to protect.";
+        return;
+      }
+
+      let detections = 0;
+
+      const apiKeyPattern = /(sk_live_[a-zA-Z0-9]{20,}|api_key\s*=\s*[a-zA-Z0-9_-]+)/gi;
+      if (apiKeyPattern.test(text)) detections++;
+      text = text.replace(apiKeyPattern, '[REDACTED_API_KEY]');
+
+      const passwordPattern = /(password\s*[:=]\s*[^\s]+)/gi;
+      if (passwordPattern.test(text)) detections++;
+      text = text.replace(passwordPattern, 'password=[REDACTED]');
+
+      const emailPattern = /([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)/g;
+      if (emailPattern.test(text)) detections++;
+      text = text.replace(emailPattern, '[REDACTED_EMAIL]');
+
+      const ccPattern = /\b(?:\d{4}[ -]?){3}\d{4}\b/g;
+      if (ccPattern.test(text)) detections++;
+      text = text.replace(ccPattern, '[REDACTED_CREDIT_CARD]');
+
+      if (detections > 0) {
+        resultDiv.style.background = '#fff3cd';
+        resultDiv.style.color = '#856404';
+        resultDiv.innerHTML = `<strong>🔒 Data Protected (${detections} sensitive patterns masked):</strong><br><pre style="background: var(--card-bg); color: var(--text-color); padding: 8px; margin-top: 5px; border: 1px solid var(--border-color); border-radius: 4px; white-space: pre-wrap;">${text}</pre>`;
+      } else {
+        resultDiv.style.background = '#e6ffed';
+        resultDiv.style.color = '#006622';
+        resultDiv.innerHTML = `<strong>✅ Clean Data</strong> No sensitive PII or security secrets detected.`;
+      }
+    }
   </script>
 </body>
 
 </html>
-
-<!-- Feature 3: Code Vulnerability Analyzer -->
-<div class="card">
-  <h3>🔍 Code Vulnerability Analyzer</h3>
-  <textarea id="codeSnippet" placeholder="Paste your code snippet here (e.g., hardcoded passwords, SQL queries)..."
-    rows="4"></textarea>
-  <button onclick="scanCode()">Analyze Code</button>
-  <div id="codeResult"></div>
-</div>
-
-<script>
-  // Code Vulnerability Analyzer Function
-  function scanCode() {
-    const code = document.getElementById('codeSnippet').value;
-    const resultDiv = document.getElementById('codeResult');
-
-    if (!code.trim()) {
-      resultDiv.style.background = "#fff";
-      resultDiv.innerText = "Please paste some code to analyze.";
-      return;
-    }
-
-    // Common vulnerability patterns
-    const vulnerabilities = [
-      {pattern: /password\s*=\s*['"][^'"]+['"]/i, name: "Hardcoded Password / Secret"},
-      {pattern: /eval\s*\(/i, name: "Unsafe use of eval()"},
-      {pattern: /SELECT\s+\*\s+FROM/i, name: "Potential SQL Injection Pattern"},
-      {pattern: /api_key\s*=\s*['"][^'"]+['"]/i, name: "Hardcoded API Key"},
-      {pattern: /document\.write\s*\(/i, name: "Potential XSS Vulnerability"}
-    ];
-
-    let foundIssues = [];
-
-    for (let vuln of vulnerabilities) {
-      if (vuln.pattern.test(code)) {
-        foundIssues.push(vuln.name);
-      }
-    }
-
-    if (foundIssues.length > 0) {
-      resultDiv.style.background = '#ffe6e6';
-      resultDiv.style.color = '#cc0000';
-      resultDiv.innerHTML = `<strong>⚠️ Vulnerabilities Detected (${foundIssues.length}):</strong><ul>` +
-        foundIssues.map(issue => `<li>${issue}</li>`).join('') + `</ul>`;
-    } else {
-      resultDiv.style.background = '#e6ffed';
-      resultDiv.style.color = '#006622';
-      resultDiv.innerHTML = `<strong>✅ Secure Code</strong> No common vulnerability signatures found.`;
-    }
-  }
-</script>
-
-<!-- Feature 4: Real Hacking & Data Protection (Sensitive Data Redactor) -->
-<div class="card">
-  <h3>🛡️ Real Hacking & Data Protection (PII Redaction)</h3>
-  <textarea id="sensitiveDataInput"
-    placeholder="Enter logs or text containing sensitive info (e.g., API keys, passwords, emails)..."
-    rows="4"></textarea>
-  <button onclick="redactData()">Protect & Mask Data</button>
-  <div id="dataResult"></div>
-</div>
-
-<script>
-  // Real Hacking & Data Protection (DLP / Redaction) Function
-  function redactData() {
-    let text = document.getElementById('sensitiveDataInput').value;
-    const resultDiv = document.getElementById('dataResult');
-
-    if (!text.trim()) {
-      resultDiv.style.background = "#fff";
-      resultDiv.innerText = "Please enter text to protect.";
-      return;
-    }
-
-    let detections = 0;
-
-    // 1. Redact API Keys / Tokens (e.g., sk_live_..., api_key=...)
-    const apiKeyPattern = /(sk_live_[a-zA-Z0-9]{20,}|api_key\s*=\s*[a-zA-Z0-9_-]+)/gi;
-    if (apiKeyPattern.test(text)) detections++;
-    text = text.replace(apiKeyPattern, '[REDACTED_API_KEY]');
-
-    // 2. Redact Passwords (e.g., password=12345)
-    const passwordPattern = /(password\s*[:=]\s*[^\s]+)/gi;
-    if (passwordPattern.test(text)) detections++;
-    text = text.replace(passwordPattern, 'password=[REDACTED]');
-
-    // 3. Redact Email Addresses
-    const emailPattern = /([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)/g;
-    if (emailPattern.test(text)) detections++;
-    text = text.replace(emailPattern, '[REDACTED_EMAIL]');
-
-    // 4. Redact Credit Card Numbers
-    const ccPattern = /\b(?:\d{4}[ -]?){3}\d{4}\b/g;
-    if (ccPattern.test(text)) detections++;
-    text = text.replace(ccPattern, '[REDACTED_CREDIT_CARD]');
-
-    if (detections > 0) {
-      resultDiv.style.background = '#fff3cd';
-      resultDiv.style.color = '#856404';
-      resultDiv.innerHTML = `<strong>🔒 Data Protected (${detections} sensitive patterns masked):</strong><br><pre style="background: #fff; padding: 8px; margin-top: 5px; border: 1px solid #ffeeba; border-radius: 4px; white-space: pre-wrap;">${text}</pre>`;
-    } else {
-      resultDiv.style.background = '#e6ffed';
-      resultDiv.style.color = '#006622';
-      resultDiv.innerHTML = `<strong>✅ Clean Data</strong> No sensitive PII or security secrets detected.`;
-    }
-  }
-</script>
-
-<style>
-  #results,
-  #scanResult,
-  #codeResult,
-  #dataResult {
-    margin-top: 15px;
-    padding: 10px;
-    border-radius: 4px;
-  }
-</style>
