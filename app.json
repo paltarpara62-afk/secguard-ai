@@ -1,6 +1,19 @@
 {
-  "name": "secguard-ai",
-  "tagline": "TODO",
-  "description": "TODO",
-  "category": "productivity"
+  "manifest_version": 2,
+  "name": "SecGuard AI",
+  "slug": "secguard-ai",
+  "description": "An all-in-one AI security dashboard for URL scanning, prompt injection detection, code vulnerability analysis, and PII redaction.",
+  "version": "1.0.0",
+  "author": "Pinal Tarpara",
+  "ui": {
+    "bundle": ".",
+    "entry": "index.html",
+    "views": [
+      {
+        "id": "dashboard",
+        "name": "SecGuard Dashboard",
+        "path": "/"
+      }
+    ]
+  }
 }
